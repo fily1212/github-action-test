@@ -41,3 +41,18 @@ jobs:
           context: . # Contesto di build (la root del repository)
           push: true # Indica di fare il push dell'immagine
           tags: ghcr.io/${{ github.repository_owner }}/github-action-example:latest # Tag dell'immagine
+
+  deploy-selfhosted:
+    needs: build-and-push # aspetta la fine del job precedente
+    runs-on: self-hosted  # gira su una macchina dove hai registrato un runner
+    steps:
+      - name: Pull latest image from GHCR
+        run: docker pull ghcr.io/${{ github.repository_owner }}/github-action-example:latest
+
+      - name: Stop and remove old container
+        run: |
+          docker rm -f github-action-example || true
+
+      - name: Run new container
+        run: |
+          docker run -d --name github-action-example -p 8060:8060 ghcr.io/${{ github.repository_owner }}/github-action-example:latest
