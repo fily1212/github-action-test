@@ -1,0 +1,43 @@
+name: Build and Push
+on:
+    push:
+        branches: [ "main" ] # Esegui il workflow su push al branch main
+    pull_request:
+        branches: [ "main" ] # Esegui anche su pull request verso main (opzionale, per test)
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest # Utilizza un runner Ubuntu
+    permissions:
+        contents: read
+        packages: write # Permessi per scrivere su GitHub Packages (GHCR)
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4 # Azione per fare il checkout del codice
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin' # Distribuzione Temurin di OpenJDK
+          cache: 'maven' # Abilita la cache per le dipendenze Maven
+
+      - name: Grant execute permission to mvnw
+        run: chmod +x ./mvnw
+
+      - name: Build with Maven
+        run: ./mvnw package # Comando per compilare e pacchettizzare l'applicazione
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }} # Nome utente GitHub dell'attore che ha triggerato il workflow
+          password: ${{ secrets.GITHUB_TOKEN }} # Token fornito automaticamente da GitHub Actions
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: . # Contesto di build (la root del repository)
+          push: true # Indica di fare il push dell'immagine
+          tags: ghcr.io/${{ github.repository_owner }}/github-action-example:latest # Tag dell'immagine
